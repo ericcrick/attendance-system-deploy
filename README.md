@@ -1,10 +1,5 @@
 # My notes on how I deploy this thing
 
-This is me explaining to future-me how this whole setup works, in plain
-words, so I don't have to re-learn it every time. I'm writing this like I'm
-explaining it to a 5 year old, because 6 months from now that's basically
-what I'll need.
-
 ## The big picture, in one paragraph
 
 I have an app made of 3 little programs (backend, web, fingerprint-matcher)
@@ -34,7 +29,7 @@ ever talks to the second repo. Think of it like — one repo is my recipe
 book, the other repo is the actual cake, already baked, ready to eat. The
 desktop only ever gets handed a cake, never the recipe.
 
-## What each tool is actually doing (so it's not just magic)
+## What each tool actually does
 
 - **PostgreSQL** — the database. Where all the attendance records, employee
   info, etc. actually live. Installed directly on the Windows desktop like
@@ -55,8 +50,7 @@ desktop only ever gets handed a cake, never the recipe.
 
 ## How updating without downtime actually works
 
-This was the part I most wanted, so here's how it's really happening: PM2
-doesn't update a running program by just killing it and starting the new
+PM2 doesn't update a running program by just killing it and starting the new
 one (that would cause a gap where the app is down). Instead, for the
 backend and the web app, it starts the *new* version first, waits until
 it's fully up and listening, and only *then* quietly retires the old one.
@@ -69,10 +63,10 @@ nothing in a browser ever talks to the fingerprint-matcher directly (only
 the backend does, quietly, behind the scenes), and Caddy's config almost
 never changes anyway.
 
-## Two kinds of `.env` file (this tripped me up, worth writing down)
+## Two kinds of `.env` file
 
-There's `backend/.env` and there's `web/.env.production`, and they get used
-in *completely different ways*. I kept mixing this up, so:
+There's `backend/.env` and there's `web/.env.production` — they get used in
+*completely different ways*:
 
 **`backend/.env`** — read fresh, every single time the backend program
 starts, directly on the machine it's running on. This is normal: it's how
