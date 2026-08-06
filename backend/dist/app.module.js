@@ -24,6 +24,14 @@ const designations_module_1 = require("./modules/designations/designations.modul
 const postings_module_1 = require("./modules/postings/postings.module");
 const leaves_module_1 = require("./modules/leaves/leaves.module");
 const fingerprint_module_1 = require("./modules/fingerprint/fingerprint.module");
+const REQUIRED_ENV_VARS = ['DB_HOST', 'DB_PORT', 'DB_USERNAME', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET'];
+function validateEnv(config) {
+    const missing = REQUIRED_ENV_VARS.filter((key) => !config[key]);
+    if (missing.length > 0) {
+        throw new Error(`Missing required environment variable(s): ${missing.join(', ')}. Check backend/.env.`);
+    }
+    return config;
+}
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -33,6 +41,7 @@ exports.AppModule = AppModule = __decorate([
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
                 envFilePath: '.env',
+                validate: validateEnv,
             }),
             typeorm_1.TypeOrmModule.forRootAsync({
                 imports: [config_1.ConfigModule],

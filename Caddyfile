@@ -21,7 +21,10 @@
 	}
 
 	log {
-		output file ../logs/caddy-access.log
+		# Relative to Caddy's own working directory, which ecosystem.config.js
+		# sets to the deploy repo root — same "logs" folder PM2 already writes
+		# every other service's stdout/stderr into.
+		output file logs/caddy-access.log
 		format json
 	}
 }
