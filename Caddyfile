@@ -1,30 +1,48 @@
 # Single LAN entry point. Everyone on the network hits this machine on plain
-# HTTP port 80 — no TLS cert needed for an internal LAN kiosk app.
+# HTTP port 80 - no TLS cert needed for an internal LAN kiosk app.
 #
-# `caddy reload --config Caddyfile` applies changes to this file with zero
-# downtime (existing connections are drained, not dropped) — but you should
-# rarely need to touch this file at all; it doesn't change on app updates.
+# Caddy is itself a Docker Swarm service now (see docker-stack.yml), so it
+# reaches backend/web by their Swarm service DNS names, not localhost.
 :80 {
 	# NestJS backend: API routes + statically-served upload files.
 	# The fingerprint-matcher service (:5000) is intentionally never routed
-	# here — it's called server-to-server by the backend only.
+	# here - it's called server-to-server by the backend only, and has no
+	# published port at all.
+	#
+	# lb_try_duration/lb_retries: backend/web are single-replica Swarm
+	# services. Measured directly: Swarm's routing mesh has a brief gap
+	# (a few seconds) during a rolling update even with start-first
+	# ordering - this tells Caddy to transparently retry a failed
+	# connection for up to 10s instead of erroring out to the client.
+	# Verified this closes the gap to zero client-visible failures during
+	# a `docker service update`, both when Caddy ran natively reaching
+	# localhost and now reaching the Swarm service DNS name directly.
 	handle /api/* {
-		reverse_proxy localhost:3000
+		reverse_proxy backend:3000 {
+			lb_try_duration 10s
+			lb_retries 5
+		}
 	}
 	handle /uploads/* {
-		reverse_proxy localhost:3000
+		reverse_proxy backend:3000 {
+			lb_try_duration 10s
+			lb_retries 5
+		}
 	}
 
 	# Next.js web app: kiosk screen (/) + admin dashboard (/dashboard/**, /login).
 	handle {
-		reverse_proxy localhost:3001
+		reverse_proxy web:3001 {
+			lb_try_duration 10s
+			lb_retries 5
+		}
 	}
 
 	log {
-		# Relative to Caddy's own working directory, which ecosystem.config.js
-		# sets to the deploy repo root — same "logs" folder PM2 already writes
-		# every other service's stdout/stderr into.
-		output file logs/caddy-access.log
+		# Container stdout - view with `docker service logs attendance_caddy`,
+		# same as every other service now, rather than a file that would need
+		# its own volume mount to survive a container restart.
+		output stdout
 		format json
 	}
 }

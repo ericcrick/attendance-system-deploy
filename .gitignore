@@ -1,6 +1,0 @@
-backend/node_modules/
-backend/uploads/
-backend/.env
-web/standalone/.env*
-logs/
-tools/
