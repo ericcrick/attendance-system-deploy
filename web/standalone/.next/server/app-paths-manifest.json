@@ -1,0 +1,18 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/dashboard/attendance/page": "app/dashboard/attendance/page.js",
+  "/dashboard/departments/page": "app/dashboard/departments/page.js",
+  "/dashboard/designations/page": "app/dashboard/designations/page.js",
+  "/dashboard/employees/page": "app/dashboard/employees/page.js",
+  "/dashboard/leaderboard/page": "app/dashboard/leaderboard/page.js",
+  "/dashboard/leaves/page": "app/dashboard/leaves/page.js",
+  "/dashboard/my-workspace/page": "app/dashboard/my-workspace/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/postings/page": "app/dashboard/postings/page.js",
+  "/dashboard/settings/page": "app/dashboard/settings/page.js",
+  "/dashboard/shifts/page": "app/dashboard/shifts/page.js",
+  "/dashboard/users/page": "app/dashboard/users/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js"
+}

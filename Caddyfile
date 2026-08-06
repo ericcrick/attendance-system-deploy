@@ -1,0 +1,27 @@
+# Single LAN entry point. Everyone on the network hits this machine on plain
+# HTTP port 80 — no TLS cert needed for an internal LAN kiosk app.
+#
+# `caddy reload --config Caddyfile` applies changes to this file with zero
+# downtime (existing connections are drained, not dropped) — but you should
+# rarely need to touch this file at all; it doesn't change on app updates.
+:80 {
+	# NestJS backend: API routes + statically-served upload files.
+	# The fingerprint-matcher service (:5000) is intentionally never routed
+	# here — it's called server-to-server by the backend only.
+	handle /api/* {
+		reverse_proxy localhost:3000
+	}
+	handle /uploads/* {
+		reverse_proxy localhost:3000
+	}
+
+	# Next.js web app: kiosk screen (/) + admin dashboard (/dashboard/**, /login).
+	handle {
+		reverse_proxy localhost:3001
+	}
+
+	log {
+		output file ../logs/caddy-access.log
+		format json
+	}
+}

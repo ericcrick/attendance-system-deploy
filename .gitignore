@@ -1,0 +1,5 @@
+backend/uploads/
+backend/.env
+web/standalone/.env*
+logs/
+tools/
