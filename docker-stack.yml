@@ -1,51 +1,33 @@
-# Everything runs in Docker now - Postgres, Caddy, and the three app
-# services - under a single Docker Swarm stack (not plain `docker compose`;
-# Swarm is what gives the zero-downtime rolling update via
-# `order: start-first` below). Nothing else needs to be installed natively
-# on the target machine except Docker itself.
+# Only backend and web run in Docker. PostgreSQL, Caddy, and
+# fingerprint-matcher are native Windows processes on this same machine -
+# see deploy/target-setup.md. Docker Swarm (not plain `docker compose`) is
+# what gives the zero-downtime rolling update via `order: start-first`
+# below.
 #
-# backend/web/fingerprint-matcher are pulled from GitHub Container
-# Registry as public images - no `docker login`, no auth needed on this
-# machine at all. postgres/caddy are public Docker Hub images, same deal.
+# backend/web are pulled from GitHub Container Registry as public images -
+# no `docker login`, no auth needed on this machine at all.
 #
 # Deploy (or update) with:
 #   docker stack deploy -c docker-stack.yml attendance
-# Verified directly: this always resolves the current :latest digest and
-# only actually restarts a service whose image content changed - no
-# --force flag needed even for a normal update.
+# Verified directly (in an earlier version of this stack): this always
+# resolves the current :latest digest and only actually restarts a
+# service whose image content changed - no --force flag needed.
 #
-# Requires `docker swarm init` to have been run once already (see
-# deploy/target-setup.md).
+# Requires `docker swarm init` to have been run once already.
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    env_file:
-      - postgres.env
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - attendance
-    deploy:
-      replicas: 1
-      update_config:
-        # Postgres is stateful and owns the data volume - never attempt to
-        # start a second one against the same volume before the first
-        # stops, unlike the stateless app services below.
-        order: stop-first
-      restart_policy:
-        condition: on-failure
-        delay: 4s
-        max_attempts: 10
-
   backend:
     image: ghcr.io/ericcrick/attendance-backend:latest
+    ports:
+      - "3000:3000"
     env_file:
       - backend.env
-    depends_on:
-      - postgres
-    networks:
-      - attendance
+    extra_hosts:
+      # Postgres and fingerprint-matcher are both native Windows
+      # processes, reached via this special hostname rather than a
+      # Swarm service name - works on Docker Engine 20.10+, not just
+      # Docker Desktop.
+      - "host.docker.internal:host-gateway"
     deploy:
       replicas: 1
       update_config:
@@ -60,8 +42,8 @@ services:
 
   web:
     image: ghcr.io/ericcrick/attendance-web:latest
-    networks:
-      - attendance
+    ports:
+      - "3001:3001"
     deploy:
       replicas: 1
       update_config:
@@ -73,57 +55,3 @@ services:
         condition: on-failure
         delay: 4s
         max_attempts: 10
-
-  fingerprint-matcher:
-    image: ghcr.io/ericcrick/attendance-fingerprint-matcher:latest
-    # No ports published - only `backend` talks to this, over the Swarm
-    # network's internal DNS (http://fingerprint-matcher:5000).
-    networks:
-      - attendance
-    deploy:
-      replicas: 1
-      update_config:
-        order: start-first
-        parallelism: 1
-        delay: 5s
-      restart_policy:
-        condition: on-failure
-        delay: 4s
-        max_attempts: 10
-
-  caddy:
-    image: caddy:2-alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-    depends_on:
-      - backend
-      - web
-    networks:
-      - attendance
-    deploy:
-      replicas: 1
-      update_config:
-        order: start-first
-        parallelism: 1
-        delay: 5s
-      restart_policy:
-        condition: on-failure
-        delay: 4s
-        max_attempts: 10
-
-networks:
-  # attachable: true - so `docker run --network attendance_attendance ...`
-  # (e.g. the one-off migration command in deploy/update.md) can join this
-  # network too. Swarm's auto-created network for a stack is NOT
-  # attachable by plain `docker run` by default - found this the hard way
-  # trying to run migrations against it.
-  attendance:
-    driver: overlay
-    attachable: true
-
-volumes:
-  pgdata:
-  caddy_data:

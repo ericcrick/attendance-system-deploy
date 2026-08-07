@@ -1,30 +1,33 @@
 # Single LAN entry point. Everyone on the network hits this machine on plain
 # HTTP port 80 - no TLS cert needed for an internal LAN kiosk app.
 #
-# Caddy is itself a Docker Swarm service now (see docker-stack.yml), so it
-# reaches backend/web by their Swarm service DNS names, not localhost.
+# Caddy runs natively on Windows (PM2-managed, see ecosystem.config.js),
+# reaching backend/web at localhost - Docker Engine in WSL2 forwards
+# published container ports to the Windows host's localhost automatically,
+# which is exactly why Caddy stays native instead of also being
+# containerized: it sidesteps WSL2-to-LAN networking entirely.
 :80 {
 	# NestJS backend: API routes + statically-served upload files.
 	# The fingerprint-matcher service (:5000) is intentionally never routed
-	# here - it's called server-to-server by the backend only, and has no
-	# published port at all.
+	# here - it's called server-to-server by the backend only, and native
+	# fingerprint-matcher isn't reachable from the LAN at all (no firewall
+	# rule opens that port).
 	#
-	# lb_try_duration/lb_retries: backend/web are single-replica Swarm
-	# services. Measured directly: Swarm's routing mesh has a brief gap
-	# (a few seconds) during a rolling update even with start-first
+	# lb_try_duration/lb_retries: backend/web are single-replica Docker
+	# Swarm services. Measured directly: Swarm's routing mesh has a brief
+	# gap (a few seconds) during a rolling update even with start-first
 	# ordering - this tells Caddy to transparently retry a failed
 	# connection for up to 10s instead of erroring out to the client.
 	# Verified this closes the gap to zero client-visible failures during
-	# a `docker service update`, both when Caddy ran natively reaching
-	# localhost and now reaching the Swarm service DNS name directly.
+	# a `docker stack deploy` update.
 	handle /api/* {
-		reverse_proxy backend:3000 {
+		reverse_proxy localhost:3000 {
 			lb_try_duration 10s
 			lb_retries 5
 		}
 	}
 	handle /uploads/* {
-		reverse_proxy backend:3000 {
+		reverse_proxy localhost:3000 {
 			lb_try_duration 10s
 			lb_retries 5
 		}
@@ -32,17 +35,17 @@
 
 	# Next.js web app: kiosk screen (/) + admin dashboard (/dashboard/**, /login).
 	handle {
-		reverse_proxy web:3001 {
+		reverse_proxy localhost:3001 {
 			lb_try_duration 10s
 			lb_retries 5
 		}
 	}
 
 	log {
-		# Container stdout - view with `docker service logs attendance_caddy`,
-		# same as every other service now, rather than a file that would need
-		# its own volume mount to survive a container restart.
-		output stdout
+		# Relative to Caddy's own working directory, which ecosystem.config.js
+		# sets to the deploy folder root - same "logs" folder PM2 writes every
+		# other native process's stdout/stderr into.
+		output file logs/caddy-access.log
 		format json
 	}
 }
