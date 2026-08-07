@@ -4,20 +4,25 @@
 # what gives the zero-downtime rolling update via `order: start-first`
 # below.
 #
-# backend/web are pulled from GitHub Container Registry as public images -
-# no `docker login`, no auth needed on this machine at all.
+# backend/web images are never pulled from anywhere - they're built on the
+# dev machine, carried over on a USB drive as tarballs, and `docker load`ed
+# here. No registry involved, nothing compiled ever leaves this machine
+# except onto that USB drive.
 #
-# Deploy (or update) with:
-#   docker stack deploy -c docker-stack.yml attendance
-# Verified directly (in an earlier version of this stack): this always
-# resolves the current :latest digest and only actually restarts a
-# service whose image content changed - no --force flag needed.
+# First deploy, and after every `docker load` of a fresh tarball:
+#   docker stack deploy --resolve-image=never -c docker-stack.yml attendance
+# --resolve-image=never is required - without it, Swarm tries to check a
+# registry for these images and there isn't one. Verified directly: this
+# command alone does NOT pick up a same-tag image reload by itself - see
+# deploy/update.md for the `docker service update --force` step that
+# actually triggers the rollout (also verified: still 0 dropped requests
+# across 300 hammered during that forced update).
 #
 # Requires `docker swarm init` to have been run once already.
 
 services:
   backend:
-    image: ghcr.io/ericcrick/attendance-backend:latest
+    image: attendance-backend:latest
     ports:
       - "3000:3000"
     env_file:
@@ -41,7 +46,7 @@ services:
         max_attempts: 10
 
   web:
-    image: ghcr.io/ericcrick/attendance-web:latest
+    image: attendance-web:latest
     ports:
       - "3001:3001"
     deploy:

@@ -29,10 +29,11 @@ module.exports = {
     },
     {
       // fingerprint-matcher.exe lives in ./fingerprint-matcher, published
-      // for win-x64 and fetched from the public deploy repo - not
-      // zero-downtime on purpose (internal-only, called server-to-server
-      // by the backend, never a browser - a brief restart during an
-      // update is invisible to anyone actually using the app).
+      // for win-x64 and copied in from a USB drive (see
+      // deploy/target-setup.md, deploy/update.md) - not zero-downtime on
+      // purpose (internal-only, called server-to-server by the backend,
+      // never a browser - a brief restart during an update is invisible
+      // to anyone actually using the app).
       name: 'fingerprint-matcher',
       cwd: __dirname + '/fingerprint-matcher',
       script: 'FingerprinterMatcher.exe',
